@@ -1,0 +1,163 @@
+﻿@page "/notes"
+@using MyNotes.Interfaces
+@using MyNotes.Models
+@attribute [StreamRendering]
+@inject INoteRepository NoteRepository
+@rendermode InteractiveServer
+
+<PageTitle>Notes</PageTitle>
+
+<h1>My Notes</h1>
+
+<div class="add-note-container">
+    <button class="btn btn-success" @onclick="ShowAddNoteDialog">
+        <i class="bi bi-plus-circle"></i> Add Note
+    </button>
+</div>
+
+@if (showAddDialog)
+{
+    <div class="add-note-dialog">
+        <h3>Add New Note</h3>
+        <div class="form-group">
+            <label>Title:</label>
+            <input @bind="newNote.Name" class="form-control" />
+        </div>
+        <div class="form-group">
+            <label>Content:</label>
+            <textarea @bind="newNote.Text" class="form-control"></textarea>
+        </div>
+        <div class="dialog-actions">
+            <button class="btn btn-primary" @onclick="AddNote">Save</button>
+            <button class="btn btn-secondary" @onclick="CancelAddNote">Cancel</button>
+        </div>
+    </div>
+}
+
+<div class="notes-container">
+    @if (notes == null)
+    {
+        <p><em>Loading notes...</em></p>
+    }
+    else if (!notes.Any())
+    {
+        <p>No notes found. Create your first note!</p>
+    }
+    else
+    {
+        @foreach (var note in notes)
+        {
+            <div class="note-card">
+                <div class="note-header">
+                    <h3>@note.Name</h3>
+                    <div>
+                        <button class="btn btn-primary btn-sm me-2" @onclick="() => StartEditing(note.NoteId)">
+                            <i class="bi bi-pencil"></i> Edit
+                        </button>
+                        <button class="btn btn-danger btn-sm" @onclick="() => DeleteNote(note.NoteId)">
+                            <i class="bi bi-trash"></i> Delete
+                        </button>
+                    </div>
+                </div>
+
+                @if (editingNoteId == note.NoteId)
+                {
+                    <div class="form-group">
+                        <label>Title:</label>
+                        <input @bind="note.Name" class="form-control" />
+                    </div>
+                    <textarea @bind="note.Text" class="form-control note-content"></textarea>
+                    <div class="note-actions">
+                        <button class="btn btn-primary btn-sm" @onclick="() => SaveNote(note)">
+                            <i class="bi bi-check"></i> Save
+                        </button>
+                        <button class="btn btn-secondary btn-sm" @onclick="() => CancelEdit()">
+                            <i class="bi bi-x"></i> Cancel
+                        </button>
+                    </div>
+                }
+                else
+                {
+                    <div class="note-content">
+                        @note.Text
+                    </div>
+                }
+
+                <div class="note-footer">
+                    <small>Last updated: @note.DateTime.ToString("g")</small>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private List<Note>? notes;
+    private int? editingNoteId = null;
+    private bool showAddDialog = false;
+    private Note newNote = new Note();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadNotes();
+    }
+
+    private async Task LoadNotes()
+    {
+        notes = await NoteRepository.GetNotes();
+        StateHasChanged();
+    }
+
+    private void ShowAddNoteDialog()
+    {
+        newNote = new Note();
+        showAddDialog = true;
+        StateHasChanged();
+    }
+
+    private async Task AddNote()
+    {
+        if (!string.IsNullOrWhiteSpace(newNote.Name))
+        {
+            newNote.DateTime = DateTime.Now;
+            await NoteRepository.Add(newNote);
+            showAddDialog = false;
+            await LoadNotes();
+        }
+    }
+
+    private void CancelAddNote()
+    {
+        showAddDialog = false;
+        StateHasChanged();
+    }
+
+    private void StartEditing(int noteId)
+    {
+        editingNoteId = noteId;
+        StateHasChanged();
+    }
+
+    private void CancelEdit()
+    {
+        editingNoteId = null;
+        StateHasChanged();
+    }
+
+    private async Task SaveNote(Note note)
+    {
+        if (!string.IsNullOrWhiteSpace(note.Name))
+        {
+            note.DateTime = DateTime.Now;
+            await NoteRepository.Update(note, note.NoteId);
+            editingNoteId = null;
+            await LoadNotes();
+        }
+    }
+
+    private async Task DeleteNote(int noteId)
+    {
+        await NoteRepository.Delete(noteId);
+        await LoadNotes();
+    }
+}
