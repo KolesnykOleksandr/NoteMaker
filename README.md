@@ -1,1 +1,1 @@
-# MyNotes
+NoteMaker is a personal note-taking application built with Blazor Server, Entity Framework Core and SQL Server, featuring real-time CRUD operations and a clean card-based UI - perfect for organizing thoughts and learning modern .NET web development.
